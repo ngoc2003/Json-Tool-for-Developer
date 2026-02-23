@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, Upload, Download, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isValidJson, beautifyJson } from "@/utils/json-utils";
+import { isValidJson, beautifyJson, isValidXml } from "@/utils/json-utils";
 
 interface JsonEditorProps {
   title?: string;
@@ -17,6 +17,7 @@ interface JsonEditorProps {
   readOnly?: boolean;
   showStats?: boolean;
   className?: string;
+  validationMode?: "json" | "xml" | "none";
 }
 
 export function JsonEditor({
@@ -27,16 +28,24 @@ export function JsonEditor({
   readOnly = false,
   showStats = true,
   className,
+  validationMode = "json",
 }: JsonEditorProps) {
   const [copied, setCopied] = useState(false);
 
   const isValid = useMemo(() => {
     if (!value.trim()) return true;
+    if (validationMode === "none") return true;
+    if (validationMode === "xml") return isValidXml(value);
     return isValidJson(value);
-  }, [value]);
+  }, [value, validationMode]);
 
   const stats = useMemo(() => {
     if (!value.trim() || !isValid) return null;
+    if (validationMode !== "json") {
+      // For XML or other modes, just return line count
+      const lines = value.split("\n").length;
+      return { keys: null, lines };
+    }
     try {
       const obj = JSON.parse(value);
       const keyCount = countKeys(obj);
@@ -45,7 +54,7 @@ export function JsonEditor({
     } catch {
       return null;
     }
-  }, [value, isValid]);
+  }, [value, isValid, validationMode]);
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(value);
@@ -54,10 +63,10 @@ export function JsonEditor({
   }, [value]);
 
   const handleFormat = useCallback(() => {
-    if (isValid && value.trim()) {
+    if (validationMode === "json" && isValid && value.trim()) {
       onChange(beautifyJson(value));
     }
-  }, [value, isValid, onChange]);
+  }, [value, isValid, validationMode, onChange]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,7 +121,7 @@ export function JsonEditor({
             <input
               id={`file-${title}`}
               type="file"
-              accept=".json"
+              accept={validationMode === "xml" ? ".xml,.json" : ".json"}
               className="hidden"
               onChange={handleFileUpload}
             />
@@ -143,7 +152,9 @@ export function JsonEditor({
                 variant="outline"
                 size="sm"
                 onClick={handleFormat}
-                disabled={!isValid || !value.trim()}
+                disabled={
+                  validationMode !== "json" || !isValid || !value.trim()
+                }
               >
                 Format
               </Button>
@@ -152,7 +163,7 @@ export function JsonEditor({
         </div>
         {showStats && stats && (
           <div className="flex gap-4 text-xs text-muted-foreground">
-            <span>{stats.keys} keys</span>
+            {stats.keys !== null && <span>{stats.keys} keys</span>}
             <span>{stats.lines} lines</span>
           </div>
         )}

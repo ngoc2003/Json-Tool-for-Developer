@@ -25,8 +25,11 @@ import {
   RefreshCw,
   Copy,
   Check,
+  FileType,
+  FileCode,
 } from "lucide-react";
 import { useJsonTransformer } from "@/hooks/useJsonTransformer";
+import { isValidXml } from "@/utils/json-utils";
 import { toast } from "sonner";
 
 type TransformId =
@@ -37,7 +40,9 @@ type TransformId =
   | "sort-keys"
   | "to-typescript"
   | "escape"
-  | "unescape";
+  | "unescape"
+  | "json-to-xml"
+  | "xml-to-json";
 
 export function TransformClient() {
   const { t } = useTranslation();
@@ -47,6 +52,26 @@ export function TransformClient() {
     null,
   );
   const [copied, setCopied] = useState(false);
+
+  const isXmlValid = useMemo(() => isValidXml(input), [input]);
+
+  // Determine if we should show validation error based on the context
+  const shouldShowError = useMemo(() => {
+    if (!input.trim()) return false;
+
+    // If user is trying to use XML to JSON, only validate XML
+    if (activeTransform === "xml-to-json") {
+      return !isXmlValid;
+    }
+
+    // For escape/unescape, don't show validation errors
+    if (activeTransform === "escape" || activeTransform === "unescape") {
+      return false;
+    }
+
+    // For all other operations, show JSON validation error only if there's an actual error
+    return !isValid && error;
+  }, [input, activeTransform, isXmlValid, isValid, error]);
 
   const transformations = useMemo(
     () => [
@@ -97,6 +122,18 @@ export function TransformClient() {
         name: t("transform.unescape"),
         description: t("transform.unescapeDesc"),
         icon: Quote,
+      },
+      {
+        id: "json-to-xml" as const,
+        name: t("transform.jsonToXml"),
+        description: t("transform.jsonToXmlDesc"),
+        icon: FileCode,
+      },
+      {
+        id: "xml-to-json" as const,
+        name: t("transform.xmlToJson"),
+        description: t("transform.xmlToJsonDesc"),
+        icon: FileType,
       },
     ],
     [t],
@@ -202,9 +239,17 @@ export function TransformClient() {
                 variant={activeTransform === tr.id ? "default" : "outline"}
                 className="h-auto flex-col py-3 px-2"
                 onClick={() => handleTransform(tr.id)}
-                disabled={
-                  !isValid && tr.id !== "escape" && tr.id !== "unescape"
-                }
+                disabled={(() => {
+                  // These transformations don't require valid input
+                  if (tr.id === "escape" || tr.id === "unescape") return false;
+
+                  // XML to JSON requires valid XML
+                  if (tr.id === "xml-to-json")
+                    return !isXmlValid && input.trim() !== "";
+
+                  // JSON to XML and all other JSON transformations require valid JSON
+                  return !isValid;
+                })()}
               >
                 <tr.icon className="h-4 w-4 mb-1" />
                 <span className="text-xs font-medium">{tr.name}</span>
@@ -218,10 +263,25 @@ export function TransformClient() {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Input */}
         <JsonEditor
-          title={t("transform.input")}
+          title={
+            activeTransform === "xml-to-json"
+              ? "XML " + t("transform.input")
+              : t("transform.input")
+          }
           value={input}
           onChange={setInput}
-          placeholder={t("transform.inputPlaceholder")}
+          placeholder={
+            activeTransform === "xml-to-json"
+              ? t("transform.xmlInputPlaceholder")
+              : t("transform.inputPlaceholder")
+          }
+          validationMode={
+            activeTransform === "xml-to-json"
+              ? "xml"
+              : activeTransform === "escape" || activeTransform === "unescape"
+                ? "none"
+                : "json"
+          }
         />
 
         {/* Output */}
@@ -280,11 +340,18 @@ export function TransformClient() {
       </div>
 
       {/* Validation Error */}
-      {error && input.trim() && (
+      {shouldShowError && (
         <Card className="bg-destructive/10 border-destructive/20">
           <CardContent className="py-3">
             <p className="text-sm text-destructive">
-              <strong>{t("transform.jsonError")}</strong> {error}
+              <strong>
+                {activeTransform === "xml-to-json"
+                  ? t("transform.xmlError")
+                  : t("transform.jsonError")}
+              </strong>{" "}
+              {activeTransform === "xml-to-json" && !isXmlValid
+                ? t("transform.invalidXmlFormat")
+                : error}
             </p>
           </CardContent>
         </Card>
@@ -298,7 +365,7 @@ export function TransformClient() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-muted-foreground">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 text-xs text-muted-foreground">
             <div>
               <p className="font-medium text-foreground">
                 {t("transform.guideBeautifyMinify")}
@@ -322,6 +389,12 @@ export function TransformClient() {
                 {t("transform.guideTypeScript")}
               </p>
               <p>{t("transform.guideTypeScriptDesc")}</p>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">
+                {t("transform.guideXmlConversion")}
+              </p>
+              <p>{t("transform.guideXmlConversionDesc")}</p>
             </div>
           </div>
         </CardContent>

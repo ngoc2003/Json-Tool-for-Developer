@@ -2,6 +2,8 @@
  * JSON utility functions for validation, formatting, and transformation
  */
 
+import { XMLParser, XMLBuilder } from "fast-xml-parser";
+
 /**
  * Check if a string is valid JSON
  */
@@ -98,6 +100,63 @@ export function unescapeJsonString(str: string): string {
     .replace(/\\t/g, "\t")
     .replace(/\\"/g, '"')
     .replace(/\\\\/g, "\\");
+}
+
+/**
+ * Check if a string is valid XML
+ */
+export function isValidXml(str: string): boolean {
+  try {
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      allowBooleanAttributes: true,
+    });
+    parser.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Convert JSON to XML
+ */
+export function jsonToXml(json: string): string {
+  try {
+    const obj = JSON.parse(json);
+    const builder = new XMLBuilder({
+      ignoreAttributes: false,
+      format: true,
+      indentBy: "  ",
+      suppressEmptyNode: true,
+    });
+    return builder.build(obj);
+  } catch (error) {
+    throw new Error(
+      `JSON to XML conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
+}
+
+/**
+ * Convert XML to JSON
+ */
+export function xmlToJson(xml: string): string {
+  try {
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      allowBooleanAttributes: true,
+      parseTagValue: true,
+      parseAttributeValue: true,
+      trimValues: true,
+    });
+    const obj = parser.parse(xml);
+    return JSON.stringify(obj, null, 2);
+  } catch (error) {
+    throw new Error(
+      `XML to JSON conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
 }
 
 /**

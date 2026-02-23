@@ -8,6 +8,9 @@ import {
   sortObjectKeys,
   escapeJsonString,
   unescapeJsonString,
+  jsonToXml,
+  xmlToJson,
+  isValidXml,
 } from "@/utils/json-utils";
 import { flattenObject, unflattenObject } from "@/utils/i18n-helper";
 import type { TransformResult, TransformType } from "@/types";
@@ -27,6 +30,8 @@ interface UseJsonTransformerReturn {
   toEscape: () => TransformResult;
   toUnescape: () => TransformResult;
   toTypeScript: () => TransformResult;
+  toJsonToXml: () => TransformResult;
+  toXmlToJson: () => TransformResult;
 }
 
 /**
@@ -147,6 +152,44 @@ export function useJsonTransformer(): UseJsonTransformerReturn {
     }
   }, [input, isValid, error]);
 
+  // Convert JSON to XML
+  const toJsonToXml = useCallback((): TransformResult => {
+    if (!isValid) {
+      return { output: "", success: false, error: error || "Invalid JSON" };
+    }
+    try {
+      const xml = jsonToXml(input);
+      return { output: xml, success: true };
+    } catch (e) {
+      return {
+        output: "",
+        success: false,
+        error: e instanceof Error ? e.message : "Error converting to XML",
+      };
+    }
+  }, [input, isValid, error]);
+
+  // Convert XML to JSON
+  const toXmlToJson = useCallback((): TransformResult => {
+    const isXmlValid = isValidXml(input);
+    if (!isXmlValid && input.trim()) {
+      return { output: "", success: false, error: "Invalid XML" };
+    }
+    if (!input.trim()) {
+      return { output: "", success: false, error: "No XML input provided" };
+    }
+    try {
+      const json = xmlToJson(input);
+      return { output: json, success: true };
+    } catch (e) {
+      return {
+        output: "",
+        success: false,
+        error: e instanceof Error ? e.message : "Error converting to JSON",
+      };
+    }
+  }, [input]);
+
   // Generic transform function
   const transform = useCallback(
     (type: TransformType): TransformResult => {
@@ -167,6 +210,10 @@ export function useJsonTransformer(): UseJsonTransformerReturn {
           return toUnescape();
         case "to-typescript":
           return toTypeScript();
+        case "json-to-xml":
+          return toJsonToXml();
+        case "xml-to-json":
+          return toXmlToJson();
         default:
           return {
             output: "",
@@ -184,6 +231,8 @@ export function useJsonTransformer(): UseJsonTransformerReturn {
       toEscape,
       toUnescape,
       toTypeScript,
+      toJsonToXml,
+      toXmlToJson,
     ],
   );
 
@@ -202,6 +251,8 @@ export function useJsonTransformer(): UseJsonTransformerReturn {
     toEscape,
     toUnescape,
     toTypeScript,
+    toJsonToXml,
+    toXmlToJson,
   };
 }
 

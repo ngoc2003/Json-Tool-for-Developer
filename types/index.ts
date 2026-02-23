@@ -45,7 +45,9 @@ export type TransformType =
   | "sort-keys"
   | "escape"
   | "unescape"
-  | "to-typescript";
+  | "to-typescript"
+  | "json-to-xml"
+  | "xml-to-json";
 
 export interface TransformResult {
   output: string;

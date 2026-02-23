@@ -20,7 +20,7 @@ Synchronize translation files instantly. Detect missing keys, merge updates, and
 
 ## JSON Transform
 
-Transform JSON with various operations: minify, beautify, flatten, unflatten, sort keys, and convert to TypeScript interfaces.
+Transform JSON with various operations: minify, beautify, flatten, unflatten, sort keys, convert to TypeScript interfaces, and XML conversion.
 
 - **Beautify**: Format JSON with proper indentation
 - **Minify**: Compress JSON by removing whitespace
@@ -28,6 +28,8 @@ Transform JSON with various operations: minify, beautify, flatten, unflatten, so
 - **Unflatten**: Restore nested structure from dot notation
 - **Sort Keys**: Alphabetically sort all object keys (recursive)
 - **To TypeScript**: Generate TypeScript interface from JSON
+- **JSON to XML**: Convert JSON to XML format
+- **XML to JSON**: Convert XML to JSON format
 - **Escape/Unescape**: Handle special characters
 
 ## Diff Viewer
